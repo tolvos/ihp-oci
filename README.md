@@ -89,7 +89,7 @@ devices:
 
 After getting the container up and running, login to the container instance as the `developer` user. Probably more than
 a few different ways to do that depending on what container manager you're using, but here's a couple different ways 
-I'm aware of (where `ihp` is the name of your container:
+I'm aware of (where `ihp` is the name of your container):
 
 - Docker: `sudo docker exec -it ihp su - developer`
 - Incus: `sudo incus exec ihp -- su - developer`
