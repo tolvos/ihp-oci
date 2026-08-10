@@ -1,0 +1,50 @@
+name: Update flake.lock
+
+on:
+  schedule:
+    - cron: "45 5 */3 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: update-flake-lock
+  cancel-in-progress: false
+
+jobs:
+  update-flake-lock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v7.0.1
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Update flake.lock
+        id: update
+        run: |
+          nix flake update
+          git add flake.lock
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(flake): update flake.lock"
+
+          # If main has advanced since checkout, get those new changes before pushing.
+          git pull --rebase origin main
+          git push
+
+      - name: Build and publish OCI container
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build.yml --ref main
