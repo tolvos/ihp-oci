@@ -5,13 +5,12 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  architectures = [
-    "x86_64-linux"
-    "aarch64-linux"
-  ];
-
   outputs = { self, nixpkgs }:
     let
+      architectures = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
       forAllArchs = nixpkgs.lib.genAttrs self.architectures;
       ihpTools = pkgs: with pkgs; [
         ihp-new
