@@ -11,7 +11,7 @@
         "x86_64-linux"
         "aarch64-linux"
       ];
-      forAllArchs = nixpkgs.lib.genAttrs self.architectures;
+      forAllArchs = nixpkgs.lib.genAttrs architectures;
       ihpTools = pkgs: with pkgs; [
         ihp-new
         direnv
