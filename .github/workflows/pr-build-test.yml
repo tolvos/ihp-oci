@@ -10,7 +10,7 @@ permissions:
 
 env:
   IMAGE_TAG: test
-  PACKAGE_NAME: ihp-oci-test-${{ github.run_id }}
+  PACKAGE_NAME: pr-test-${{ github.run_id }}
 
 jobs:
   build-and-test:
@@ -93,19 +93,18 @@ jobs:
 
           exit "$OVERALL_FAILED"
 
-      - name: Clean up temporary image
+      - name: Clean up temporary package
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Cleaning up temporary package: $PACKAGE_NAME"
-
+          API_PACKAGE_NAME="ihp-oci%2F$PACKAGE_NAME"
           if gh api \
               --method DELETE \
-              "/user/packages/container/$PACKAGE_NAME"; then
-            echo "Deleted package: $PACKAGE_NAME"
+              "/user/packages/container/$API_PACKAGE_NAME"; then
+            echo "Deleted package: ihp-oci/$PACKAGE_NAME"
           else
-            echo "::warning::Failed to delete package: $PACKAGE_NAME"
+            echo "::warning::Failed to delete package: ihp-oci/$PACKAGE_NAME"
           fi
 
       - name: Show build summary
