@@ -29,6 +29,8 @@ services:
   ihp:
     image: ghcr.io/tolvos/ihp-oci:latest
     container_name: ihp
+    stdin_open: true
+    tty: true
 
     ports:
       - "8000:8000" # Preview/live-update of the IHP app.
@@ -91,8 +93,8 @@ After getting the container up and running, login to the container instance as t
 a few different ways to do that depending on what container manager you're using, but here's a couple different ways 
 I'm aware of (where `ihp` is the name of your container):
 
-- Docker: `sudo docker exec -it ihp su - developer`
-- Incus: `sudo incus exec ihp -- su - developer`
+- Docker: `docker exec -it --user developer ihp bash --login`
+- Incus: `incus exec ihp -- su - developer`
 
 ### Creating an IHP app, or reusing an existing project.
 
