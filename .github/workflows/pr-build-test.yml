@@ -80,7 +80,7 @@ jobs:
             done
 
             check "$arch" "nix-direnv" \
-              'nix profile list | grep -q nix-direnv' || FAILED=1
+              'test -d "$HOME/.nix-profile/share/nix-direnv"' || FAILED=1
 
             if [ "$FAILED" -eq 1 ]; then
               echo "ERROR: One or more packages missing on $arch"
