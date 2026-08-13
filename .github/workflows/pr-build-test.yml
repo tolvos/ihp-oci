@@ -97,17 +97,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION_ID=$(gh api \
-            "/repos/${{ github.repository }}/packages/container/${{ env.PACKAGE_NAME }}/versions" \
-            --paginate \
-            --jq '.[] | select(.metadata.container.tags[]? == "${{ env.IMAGE_TAG }}") | .id' \
-            | head -n1)
+          set +e
+          VERSION_ID=$(
+            gh api \
+              "/user/packages/container/${{ env.PACKAGE_NAME }}/versions" \
+              --paginate \
+              --jq '.[] | select(.metadata.container.tags[]? == "${{ env.IMAGE_TAG }}") | .id' \
+              2>/dev/null |
+            head -n1
+          )
 
           if [ -n "$VERSION_ID" ]; then
-            gh api \
-              --method DELETE \
-              "/repos/${{ github.repository }}/packages/container/${{ env.PACKAGE_NAME }}/versions/$VERSION_ID"
-            echo "Deleted ${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
+            if gh api \
+                --method DELETE \
+                "/user/packages/container/${{ env.PACKAGE_NAME }}/versions/$VERSION_ID"; then
+              echo "Deleted ${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
+            else
+              echo "::warning::Failed to delete ${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
+            fi
           else
             echo "No package version found for ${{ env.IMAGE_TAG }}"
           fi
