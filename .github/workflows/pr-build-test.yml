@@ -9,8 +9,8 @@ permissions:
   packages: write
 
 env:
-  IMAGE_TAG: test-pr-${{ github.run_id }}
-  PACKAGE_NAME: ihp-oci
+  IMAGE_TAG: test
+  PACKAGE_NAME: ihp-oci-test-${{ github.run_id }}
 
 jobs:
   build-and-test:
@@ -22,7 +22,7 @@ jobs:
 
       - name: QEMU setup
         uses: docker/setup-qemu-action@v4.2.0
-        
+
       - name: Buildx setup
         uses: docker/setup-buildx-action@v4.2.0
         with:
@@ -33,7 +33,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Build multi-arch image
         id: build
@@ -76,7 +76,8 @@ jobs:
             echo "=== Testing $arch ==="
 
             for pkg in ihp-new direnv devenv; do
-              check "$arch" "$pkg" "command -v $pkg >/dev/null 2>&1" || FAILED=1
+              check "$arch" "$pkg" \
+                "command -v $pkg >/dev/null 2>&1" || FAILED=1
             done
 
             check "$arch" "nix-direnv" \
@@ -95,33 +96,21 @@ jobs:
       - name: Clean up temporary image
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set +e
-          VERSION_ID=$(
-            gh api \
-              "/user/packages/container/${{ env.PACKAGE_NAME }}/versions" \
-              --paginate \
-              --jq '.[] | select(.metadata.container.tags[]? == "${{ env.IMAGE_TAG }}") | .id' \
-              2>/dev/null |
-            head -n1
-          )
+          echo "Cleaning up temporary package: $PACKAGE_NAME"
 
-          if [ -n "$VERSION_ID" ]; then
-            if gh api \
-                --method DELETE \
-                "/user/packages/container/${{ env.PACKAGE_NAME }}/versions/$VERSION_ID"; then
-              echo "Deleted ${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
-            else
-              echo "::warning::Failed to delete ${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
-            fi
+          if gh api \
+              --method DELETE \
+              "/user/packages/container/$PACKAGE_NAME"; then
+            echo "Deleted package: $PACKAGE_NAME"
           else
-            echo "No package version found for ${{ env.IMAGE_TAG }}"
+            echo "::warning::Failed to delete package: $PACKAGE_NAME"
           fi
 
       - name: Show build summary
         if: always()
         run: |
           echo "Build ID: ${{ github.run_id }}"
-          echo "Image tag: ${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          echo "Image: ghcr.io/${{ github.repository }}/${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
           echo "Result: ${{ job.status }}"
