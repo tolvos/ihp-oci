@@ -5,29 +5,37 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { nixpkgs, ... }:
+  outputs = { self, nixpkgs }:
     let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-
-      devPackages = with pkgs; [
+      architectures = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+      forAllArchs = nixpkgs.lib.genAttrs architectures;
+      ihpTools = pkgs: with pkgs; [
         ihp-new
         direnv
         nix-direnv
         devenv
       ];
-    in {
-      packages.${system} = {
-        inherit (pkgs)
-          ihp-new
-          direnv
-          nix-direnv
-          devenv;
 
-        default = pkgs.buildEnv {
-          name = "ihp-dev-packages";
-          paths = devPackages;
+      mkOutputs = arch:
+        let
+          pkgs = nixpkgs.legacyPackages.${arch};
+          tools = ihpTools pkgs;
+        in
+        {
+          ihpNew = pkgs.ihp-new;
+          direnv = pkgs.direnv;
+          nixDirenv = pkgs.nix-direnv;
+          devenv = pkgs.devenv;
+          default = pkgs.buildEnv {
+            name = "ihp-dev-environment";
+            paths = tools;
+          };
         };
-      };
+    in
+    {
+      packages = forAllArchs mkOutputs;
     };
 }
