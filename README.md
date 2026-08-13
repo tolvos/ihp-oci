@@ -109,13 +109,3 @@ being able to spin up your environment.
 If you persist your `/nix` folder like in one of the declarative configs above, you may want to do `update-nix` after
 logging in as the `developer` user to keep your Nix store updated to the latest flake. This is just a Bash alias that
 lives in the `.bash_profile` file that makes it a bit easier.
-
-## Known issues
-
-With how IHP's live reloading/refresh script works, you have to be on the same host that's running this OCI container to
-see your changes occur in real time, without manually reloading the page. Their script has `localhost` hardcoded in, and
-I didn't want to go around mucking with IHP's code itself to make it work. This only really affects anyone doing IHP
-development on a remote server.
-
-I imagine there _may_ be other bugs similar to the one above due to the `localhost` limitation, but I'm admittedly not
-a terribly experienced IHP developer, so you may run into problems that I have yet to see.
