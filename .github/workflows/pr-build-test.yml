@@ -59,15 +59,15 @@ jobs:
               if docker run --rm \
                   --platform linux/$arch \
                   --user developer \
+                  --entrypoint /bin/bash \
                   "$IMAGE" \
-                  bash -lc "which $pkg >/dev/null 2>&1"; then
+                  -lc "command -v $pkg >/dev/null 2>&1"; then
                 echo "✓ [$pkg] found on $arch"
               else
                 echo "✗ FAILED: [$pkg] NOT FOUND on $arch"
                 FAILED=1
               fi
             done
-            
             if [ $FAILED -eq 1 ]; then
               echo "ERROR: One or more packages missing on $arch"
               OVERALL_FAILED=1
