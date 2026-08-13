@@ -51,32 +51,46 @@ jobs:
         run: |
           OVERALL_FAILED=0
           IMAGE="ghcr.io/${{ github.repository }}/${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
+
+          check() {
+            local arch="$1"
+            local description="$2"
+            local command="$3"
+
+            if docker run --rm \
+                --platform "linux/$arch" \
+                --user developer \
+                --entrypoint /bin/bash \
+                "$IMAGE" \
+                -lc "$command"; then
+              echo "✓ [$description] found on $arch"
+            else
+              echo "✗ FAILED: [$description] NOT FOUND on $arch"
+              return 1
+            fi
+          }
+
           for arch in amd64 arm64; do
             FAILED=0
             echo ""
             echo "=== Testing $arch ==="
-            for pkg in ihp-new direnv nix-direnv devenv; do
-              if docker run --rm \
-                  --platform linux/$arch \
-                  --user developer \
-                  --entrypoint /bin/bash \
-                  "$IMAGE" \
-                  -lc "command -v $pkg >/dev/null 2>&1"; then
-                echo "✓ [$pkg] found on $arch"
-              else
-                echo "✗ FAILED: [$pkg] NOT FOUND on $arch"
-                FAILED=1
-              fi
+
+            for pkg in ihp-new direnv devenv; do
+              check "$arch" "$pkg" "command -v $pkg >/dev/null 2>&1" || FAILED=1
             done
-            if [ $FAILED -eq 1 ]; then
+
+            check "$arch" "nix-direnv" \
+              'nix profile list | grep -q nix-direnv' || FAILED=1
+
+            if [ "$FAILED" -eq 1 ]; then
               echo "ERROR: One or more packages missing on $arch"
               OVERALL_FAILED=1
             else
               echo "SUCCESS: All packages verified on $arch"
             fi
           done
-          
-          exit $OVERALL_FAILED
+
+          exit "$OVERALL_FAILED"
 
       - name: Clean up temporary image
         if: always()
