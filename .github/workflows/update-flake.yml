@@ -16,7 +16,8 @@ concurrency:
 jobs:
   update-flake-lock:
     runs-on: ubuntu-latest
-
+    outputs:
+          changed: ${{ steps.update.outputs.changed }}
     steps:
       - name: Check out repo
         uses: actions/checkout@v7.0.1
@@ -40,8 +41,10 @@ jobs:
           git commit -m "chore(flake): update flake.lock"
           git pull --rebase origin main
           git push
-
-      - name: Build, test, and publish OCI container
-        if: steps.update.outputs.changed == 'true'
-        uses: ./.github/workflows/build.yml
-        with: {}
+  build:
+    if: needs.update-flake-lock.outputs.changed == 'true'
+    needs: update-flake-lock
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
