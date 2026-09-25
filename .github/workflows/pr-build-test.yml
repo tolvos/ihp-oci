@@ -1,4 +1,4 @@
-name: Image builds and packages are available
+name: PR build test
 
 on:
   pull_request:
@@ -16,20 +16,13 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     environment: pr-testing
+
     steps:
       - name: Check out repo
         uses: actions/checkout@v7.0.1
 
-      - name: QEMU setup
-        uses: docker/setup-qemu-action@v4.2.0
-
-      - name: Buildx setup
-        uses: docker/setup-buildx-action@v4.2.0
-        with:
-          platforms: linux/amd64,linux/arm64
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4.5.0
+      - name: Docker setup
+        uses: ./.github/actions/docker-setup
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -42,66 +35,25 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ghcr.io/${{ github.repository }}/${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=min
 
-      - name: Verify packages on all architectures
-        run: |
-          OVERALL_FAILED=0
-          IMAGE="ghcr.io/${{ github.repository }}/${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}"
+      - name: Verify image
+        uses: ./.github/actions/verify-image
+        with:
+          image: ghcr.io/${{ github.repository }}/${{ env.PACKAGE_NAME }}:${{ env.IMAGE_TAG }}
+          expected-packages: ihp-new direnv devenv
+          expected-paths: |
+            $HOME/.nix-profile/share/nix-direnv
 
-          check() {
-            local arch="$1"
-            local description="$2"
-            local command="$3"
-
-            if docker run --rm \
-                --platform "linux/$arch" \
-                --user developer \
-                --entrypoint /bin/bash \
-                "$IMAGE" \
-                -lc "$command"; then
-              echo "✓ [$description] found on $arch"
-            else
-              echo "✗ FAILED: [$description] NOT FOUND on $arch"
-              return 1
-            fi
-          }
-
-          for arch in amd64 arm64; do
-            FAILED=0
-            echo ""
-            echo "=== Testing $arch ==="
-
-            for pkg in ihp-new direnv devenv; do
-              check "$arch" "$pkg" \
-                "command -v $pkg >/dev/null 2>&1" || FAILED=1
-            done
-
-            check "$arch" "nix-direnv" \
-              'test -d "$HOME/.nix-profile/share/nix-direnv"' || FAILED=1
-
-            if [ "$FAILED" -eq 1 ]; then
-              echo "ERROR: One or more packages missing on $arch"
-              OVERALL_FAILED=1
-            else
-              echo "SUCCESS: All packages verified on $arch"
-            fi
-          done
-
-          exit "$OVERALL_FAILED"
-
-      - name: Clean up temporary package
+      - name: Remove temporary package
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           API_PACKAGE_NAME="ihp-oci%2F$PACKAGE_NAME"
-          if gh api \
-              --method DELETE \
-              "/user/packages/container/$API_PACKAGE_NAME"; then
+          if gh api --method DELETE "/user/packages/container/$API_PACKAGE_NAME"; then
             echo "Deleted package: ihp-oci/$PACKAGE_NAME"
           else
             echo "::warning::Failed to delete package: ihp-oci/$PACKAGE_NAME"

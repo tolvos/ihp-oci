@@ -38,13 +38,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore(flake): update flake.lock"
-
-          # If main has advanced since checkout, get those new changes before pushing.
           git pull --rebase origin main
           git push
 
-      - name: Build and publish OCI container
+      - name: Build, test, and publish OCI container
         if: steps.update.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run build.yml --ref main
+        uses: ./.github/workflows/build.yml
+        with: {}

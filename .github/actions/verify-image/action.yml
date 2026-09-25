@@ -1,0 +1,66 @@
+name: Verify Multi-Arch Image
+description: Tests packages exist on all architectures
+
+inputs:
+  image:
+    description: Image reference to test
+    required: true
+  expected-packages:
+    description: Space-separated list of commands to verify
+    required: false
+    default: 'ihp-new direnv devenv'
+  expected-paths:
+    description: Newline-separated paths that must exist
+    required: false
+    default: '$HOME/.nix-profile/share/nix-direnv'
+
+runs:
+  using: composite
+  steps:
+    - name: Verify packages on all architectures
+      shell: bash
+      env:
+        VERIFY_IMAGE: ${{ inputs.image }}
+        EXPECTED_PACKAGES: ${{ inputs.expected-packages }}
+        EXPECTED_PATHS: ${{ inputs.expected-paths }}
+      run: |
+        OVERALL_FAILED=0
+
+        check() {
+          local arch="$1" description="$2" command="$3"
+          if docker run --rm \
+              --platform "linux/$arch" \
+              --user developer \
+              --entrypoint /bin/bash \
+              "$VERIFY_IMAGE" \
+              -lc "$command"; then
+            echo "✓ [$description] found on $arch"
+          else
+            echo "✗ FAILED: [$description] NOT FOUND on $arch"
+            return 1
+          fi
+        }
+
+        for arch in amd64 arm64; do
+          FAILED=0
+          echo ""
+          echo "=== Testing $arch ==="
+
+          for pkg in $EXPECTED_PACKAGES; do
+            check "$arch" "$pkg" "command -v $pkg >/dev/null 2>&1" || FAILED=1
+          done
+
+          while IFS= read -r path_expr; do
+            [ -z "$path_expr" ] && continue
+            check "$arch" "$path_expr" "test -d \"$path_expr\"" || FAILED=1
+          done <<< "$EXPECTED_PATHS"
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "ERROR: One or more checks failed on $arch"
+            OVERALL_FAILED=1
+          else
+            echo "SUCCESS: All checks passed on $arch"
+          fi
+        done
+
+        exit "$OVERALL_FAILED"
