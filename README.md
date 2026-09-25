@@ -37,7 +37,7 @@ services:
       - "8001:8001" # IHP IDE page.
       - "8002:8002" # Hoogle, the Haskell API search engine.
 
-    # Optional: persistent storate such as an existing IHP app, or your nix store folder so you don't need to download
+    # Optional: persistent storage such as an existing IHP app, or your nix store folder so you don't need to download
     # nix/IHP dependencies each time you update your container.
     volumes:
       - /path/to/app:/home/developer/app
@@ -56,17 +56,22 @@ image: ghcr.io:tolvos/ihp-oci:latest
 profiles:
   - default
 devices:
+
+  # Optional: if you host the container on a remote server, you can expose the ports over LAN.
   preview-proxy:
     listen: tcp:0.0.0.0:8000
     connect: tcp:127.0.0.1:8000
+    nat: "true"
     type: proxy
   ide-proxy:
     listen: tcp:0.0.0.0:8001
     connect: tcp:127.0.0.1:8001
+    nat: "true"
     type: proxy
   hoogle-proxy:
     listen: tcp:0.0.0.0:8002
     connect: tcp:127.0.0.1:8002
+    nat: "true"
     type: proxy
 
   # Optional: an existing project that you want to save your progress with on the host.
